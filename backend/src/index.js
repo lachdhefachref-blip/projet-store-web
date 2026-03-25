@@ -3,11 +3,13 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import { authRouter } from "./routes/auth.js";
-import { productsRouter } from "./routes/products.js";
+import { productRouter } from "./routes/products.js";
 import { ordersRouter } from "./routes/orders.js";
 
 dotenv.config();
+
 const app = express();
+const PORT = process.env.PORT || 5000;
 
 app.use(cors({
   origin: ["https://projet-store-web.vercel.app", "http://localhost:3000"],
@@ -15,15 +17,24 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use("/products", express.static("public/products"));
 
 const mongoURI = process.env.MONGODB_URI || "mongodb://localhost:27017/storeweb";
+
 mongoose.connect(mongoURI)
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch(err => console.error("❌ MongoDB Error:", err));
+  .then(() => {
+    console.log("✅ MongoDB Connected");
+  })
+  .catch((err) => {
+    console.error("❌ MongoDB Error:", err.message);
+  });
 
 app.use("/api/auth", authRouter);
-app.use("/api/products", productsRouter);
+app.use("/api/products", productRouter);
 app.use("/api/orders", ordersRouter);
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server on port: ${PORT}`));
+app.get("/", (req, res) => res.json({ status: "OK" }));
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server on port: ${PORT}`);
+});
