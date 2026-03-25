@@ -1,4 +1,5 @@
 // src/lib/api.js
+
 export function getApiBase() {
   const env = process.env.NEXT_PUBLIC_API_URL?.trim();
   
@@ -11,9 +12,9 @@ export function getApiBase() {
   
   return env || "http://localhost:5000/api";
 }
+
 export function getImageUrl(path) {
   if (!path) return "/placeholder.svg";
-
   if (path.startsWith("http") || path.startsWith("data:")) return path;
 
   const cleanPath = path.startsWith("/") ? path.substring(1) : path;
@@ -23,11 +24,13 @@ export function getImageUrl(path) {
   
   return `/${cleanPath}`;
 }
+
 const storageKeys = {
   access: "storeweb:v2:accessToken",
   refresh: "storeweb:v2:refreshToken",
   user: "storeweb:v2:user",
 };
+
 export function getStoredUser() {
   if (typeof window === "undefined") return null;
   try {
@@ -37,6 +40,7 @@ export function getStoredUser() {
     return null;
   }
 }
+
 export function setStoredAuth({ user, accessToken, refreshToken }) {
   if (typeof window === "undefined") return;
   if (user) localStorage.setItem(storageKeys.user, JSON.stringify(user));
@@ -50,22 +54,38 @@ export function clearStoredAuth() {
   localStorage.removeItem(storageKeys.access);
   localStorage.removeItem(storageKeys.refresh);
 }
+
 export async function api(path, options = {}) {
-  const url = path.startsWith("http") ? path : `${getApiBase()}${path}`;
+  const basePath = getApiBase().endsWith('/') ? getApiBase().slice(0, -1) : getApiBase();
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  const url = path.startsWith("http") ? path : `${basePath}${cleanPath}`;
   const headers = new Headers(options.headers || {});
-  
+
   const token = typeof window !== "undefined" ? localStorage.getItem(storageKeys.access) : null;
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-  
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
   if (!headers.has("Content-Type") && options.body) {
     headers.set("Content-Type", "application/json");
   }
-
-  const res = await fetch(url, { ...options, headers });
+  const res = await fetch(url, { 
+    ...options, 
+    headers,
+    mode: 'cors', 
+  });
   
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || `HTTP ${res.status}`);
+    let errorData = {};
+    try {
+      errorData = await res.json();
+    } catch (e) {
+      errorData = { error: `HTTP ${res.status}` };
+    }
+
+    const error = new Error(errorData.error || `Error ${res.status}`);
+    error.status = res.status; 
+    error.details = errorData.details; 
+    throw error;
   }
   
   const ct = res.headers.get("content-type") || "";
