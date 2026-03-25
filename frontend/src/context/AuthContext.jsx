@@ -19,6 +19,7 @@ export function AuthProvider({ children }) {
     isAuthenticated: Boolean(user),
     isAdmin: user?.role === "admin" || user?.role === "merchant",
     
+    // دالة تسجيل الدخول
     login: async (credentials) => {
       const data = await api("/auth/login", {
         method: "POST",
@@ -28,12 +29,18 @@ export function AuthProvider({ children }) {
       setUser(data.user);
       return data;
     },
+    register: async (formData) => {
+      const data = await api("/auth/register", {
+        method: "POST",
+        body: JSON.stringify(formData),
+      });
+      setStoredAuth(data);
+      setUser(data.user);
+      return data;
+    },
 
-    // أضفنا async هنا لإصلاح خطأ الـ .then() في النافبار
     logout: async () => {
       try {
-        // إذا أردت استدعاء API الخروج مستقبلاً:
-        // await api("/auth/logout", { method: "POST" });
       } catch (err) {
         console.error("Logout error:", err);
       }
@@ -48,7 +55,9 @@ export function AuthProvider({ children }) {
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
 }
