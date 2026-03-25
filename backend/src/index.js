@@ -5,7 +5,6 @@ import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
-import mongoose from "mongoose";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -20,23 +19,22 @@ import { adminRouter } from "./routes/admin.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 const app = express();
+app.set('trust proxy', 1);
 app.use(async (req, res, next) => {
   try {
     await connectDb();
     // await seedIfEmpty(); 
     next();
   } catch (err) {
-    res.status(500).json({ error: "database_connection_failed", details: err.message });
+    console.error("Database connection error:", err);
+    res.status(500).json({ error: "database_connection_failed" });
   }
 });
-
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 app.use('/products', express.static(path.join(__dirname, 'public/products')));
-
 app.use(cors({ 
   origin: true, 
   credentials: true 
@@ -44,14 +42,17 @@ app.use(cors({
 
 app.use(cookieParser());
 app.use(morgan("dev"));
-app.use(rateLimit({ windowMs: 60_000, limit: 240 }));
-
+app.use(rateLimit({ 
+  windowMs: 60 * 1000, 
+  limit: 240,
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
 const apiRouter = express.Router();
 apiRouter.use("/webhooks/stripe", stripeWebhookRouter);
 
 apiRouter.use(express.json({ limit: "1mb" }));
 
-// Routes
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/products", productsRouter);
 apiRouter.use("/orders", ordersRouter);
@@ -59,15 +60,15 @@ apiRouter.use("/payments", paymentsRouter);
 apiRouter.use("/admin", adminRouter);
 
 app.use("/api", apiRouter);
-
-// Error Handler
 app.use((err, _req, res, _next) => {
   console.error(err);
-  res.status(500).json({ error: "internal_error", details: err.message });
+  res.status(500).json({ 
+    error: "internal_error", 
+    details: process.env.NODE_ENV !== "production" ? err.message : undefined 
+  });
 });
 
 export default app;
-
 if (process.env.NODE_ENV !== "production") {
   const port = process.env.PORT || 5000;
   app.listen(port, () => console.log(`API running locally on http://localhost:${port}`));
