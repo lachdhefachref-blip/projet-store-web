@@ -22,25 +22,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-
-// 1. الاتصال بالقاعدة
 connectDb(process.env.MONGO_URI)
   .then(async () => {
     console.log(`MongoDB connected successfully`);
     await seedIfEmpty();
   })
   .catch((err) => console.error("MongoDB connection error:", err));
-
-// 2. إعدادات الحماية - السماح بالصور (مهم جداً ترتيبه قبل الـ static)
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
-
-// 3. السماح للـ Frontend بالوصول للصور
-// تأكد أن صورك داخل المجلد: backend/public/products/
 app.use('/products', express.static(path.join(__dirname, 'public/products')));
 
-// 4. الـ CORS المفتوح
+
 app.use(cors({ 
   origin: true, 
   credentials: true 
@@ -68,10 +61,9 @@ app.use((err, _req, res, _next) => {
   console.error(err);
   res.status(500).json({ error: "internal_error", details: err.message });
 });
-
 export default app;
 
 if (process.env.NODE_ENV !== "production") {
   const port = process.env.PORT || 5000;
-  app.listen(port, () => console.log(`API running on http://localhost:${port}`));
+  app.listen(port, () => console.log(`API running locally on http://localhost:${port}`));
 }
