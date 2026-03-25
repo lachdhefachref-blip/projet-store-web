@@ -1,75 +1,29 @@
-import "dotenv/config";
 import express from "express";
+import mongoose from "mongoose";
 import cors from "cors";
-import helmet from "helmet";
-import morgan from "morgan";
-import cookieParser from "cookie-parser";
-import rateLimit from "express-rate-limit";
-import path from "path";
-import { fileURLToPath } from "url";
-
-import { connectDb } from "./lib/db.js";
-import { seedIfEmpty } from "./lib/seed-if-empty.js";
+import dotenv from "dotenv";
 import { authRouter } from "./routes/auth.js";
-import { productsRouter } from "./routes/products.js";
+import { productRouter } from "./routes/products.js";
 import { ordersRouter } from "./routes/orders.js";
-import { stripeWebhookRouter } from "./routes/stripe-webhook.js";
-import { paymentsRouter } from "./routes/payments.js";
-import { adminRouter } from "./routes/admin.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+dotenv.config();
 const app = express();
-app.set('trust proxy', 1);
-app.use(async (req, res, next) => {
-  try {
-    await connectDb();
-    // await seedIfEmpty(); 
-    next();
-  } catch (err) {
-    console.error("Database connection error:", err);
-    res.status(500).json({ error: "database_connection_failed" });
-  }
-});
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
-app.use('/products', express.static(path.join(__dirname, 'public/products')));
-app.use(cors({ 
-  origin: true, 
-  credentials: true 
+
+app.use(cors({
+  origin: ["https://projet-store-web.vercel.app", "http://localhost:3000"],
+  credentials: true
 }));
 
-app.use(cookieParser());
-app.use(morgan("dev"));
-app.use(rateLimit({ 
-  windowMs: 60 * 1000, 
-  limit: 240,
-  standardHeaders: true,
-  legacyHeaders: false,
-}));
-const apiRouter = express.Router();
-apiRouter.use("/webhooks/stripe", stripeWebhookRouter);
+app.use(express.json());
 
-apiRouter.use(express.json({ limit: "1mb" }));
+const mongoURI = process.env.MONGODB_URI || "mongodb://localhost:27017/storeweb";
+mongoose.connect(mongoURI)
+  .then(() => console.log("✅ MongoDB Connected"))
+  .catch(err => console.error("❌ MongoDB Error:", err));
 
-apiRouter.use("/auth", authRouter);
-apiRouter.use("/products", productsRouter);
-apiRouter.use("/orders", ordersRouter);
-apiRouter.use("/payments", paymentsRouter);
-apiRouter.use("/admin", adminRouter);
+app.use("/api/auth", authRouter);
+app.use("/api/products", productRouter);
+app.use("/api/orders", ordersRouter);
 
-app.use("/api", apiRouter);
-app.use((err, _req, res, _next) => {
-  console.error(err);
-  res.status(500).json({ 
-    error: "internal_error", 
-    details: process.env.NODE_ENV !== "production" ? err.message : undefined 
-  });
-});
-
-export default app;
-if (process.env.NODE_ENV !== "production") {
-  const port = process.env.PORT || 5000;
-  app.listen(port, () => console.log(`API running locally on http://localhost:${port}`));
-}
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Server on port: ${PORT}`));

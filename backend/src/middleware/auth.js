@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import { verifyAccessToken } from "../lib/jwt.js";
 import { User } from "../models/User.js";
 
@@ -7,28 +8,51 @@ export function getTokenFromRequest(req) {
   return null;
 }
 
+export async function hashToken(token) {
+  return await bcrypt.hash(token, 10);
+}
+
+export async function verifyTokenHash(token, hash) {
+  if (!hash) return false;
+  return await bcrypt.compare(token, hash);
+}
+
 export async function requireAuth(req, res, next) {
   try {
     const token = getTokenFromRequest(req);
     if (!token) return res.status(401).json({ error: "unauthorized" });
-
     const payload = verifyAccessToken(token);
-  
     const userId = payload.sub || payload.id;
-
     if (!userId) return res.status(401).json({ error: "invalid_token_payload" });
-
     const user = await User.findById(userId).lean();
     if (!user) return res.status(401).json({ error: "user_not_found" });
-
-    req.user = { 
-      id: String(user._id), 
-      email: user.email, 
-      role: user.role, 
-      name: user.name 
-    };
+    req.user = { id: String(user._id), email: user.email, role: user.role, name: user.name };
     next();
   } catch (err) {
     return res.status(401).json({ error: "session_expired" });
   }
+}
+
+export async function optionalAuth(req, res, next) {
+  try {
+    const token = getTokenFromRequest(req);
+    if (!token) return next();
+    const payload = verifyAccessToken(token);
+    const userId = payload.sub || payload.id;
+    if (userId) {
+      const user = await User.findById(userId).lean();
+      if (user) {
+        req.user = { id: String(user._id), email: user.email, role: user.role, name: user.name };
+      }
+    }
+  } catch (err) {}
+  next();
+}
+
+export function requireRole(roles) {
+  return (req, res, next) => {
+    if (!req.user) return res.status(401).json({ error: "unauthorized" });
+    if (!roles.includes(req.user.role)) return res.status(403).json({ error: "forbidden" });
+    next();
+  };
 }
