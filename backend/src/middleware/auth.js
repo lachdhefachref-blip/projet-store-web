@@ -12,12 +12,27 @@ export async function requireAuth(req, res, next) {
   try {
     const token = getTokenFromRequest(req);
     if (!token) return res.status(401).json({ error: "unauthorized" });
+
     const payload = verifyAccessToken(token);
-    const user = await User.findById(payload.sub).lean();
-    if (!user) return res.status(401).json({ error: "unauthorized" });
-    req.user = { id: String(user._id), email: user.email, role: user.role, name: user.name };
+    
+    const userId = payload.sub || payload.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: "unauthorized_payload" });
+    }
+
+    const user = await User.findById(userId).lean();
+    if (!user) return res.status(401).json({ error: "user_not_found" });
+    req.user = { 
+      id: String(user._id), 
+      email: user.email, 
+      role: user.role, 
+      name: user.name 
+    };
+    
     next();
-  } catch {
+  } catch (err) {
+    console.error("Auth Middleware Error:", err.message);
     return res.status(401).json({ error: "unauthorized" });
   }
 }
@@ -27,7 +42,8 @@ export async function optionalAuth(req, _res, next) {
     const token = getTokenFromRequest(req);
     if (!token) return next();
     const payload = verifyAccessToken(token);
-    const user = await User.findById(payload.sub).lean();
+    const userId = payload.sub || payload.id;
+    const user = await User.findById(userId).lean();
     if (user) req.user = { id: String(user._id), email: user.email, role: user.role, name: user.name };
     return next();
   } catch {
@@ -52,4 +68,3 @@ export async function verifyTokenHash(token, hash) {
   if (!hash) return false;
   return bcrypt.compare(token, hash);
 }
-

@@ -5,9 +5,8 @@ function requireEnv(name) {
   if (!v) throw new Error(`${name} is required`);
   return v;
 }
-
 export function signAccessToken(payload) {
-  return jwt.sign(payload, requireEnv("JWT_ACCESS_SECRET"), { expiresIn: "15m" });
+  return jwt.sign(payload, requireEnv("JWT_ACCESS_SECRET"), { expiresIn: "7d" });
 }
 
 export function signRefreshToken(payload) {
@@ -21,4 +20,3 @@ export function verifyAccessToken(token) {
 export function verifyRefreshToken(token) {
   return jwt.verify(token, requireEnv("JWT_REFRESH_SECRET"));
 }
-
