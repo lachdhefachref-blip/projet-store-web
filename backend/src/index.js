@@ -22,17 +22,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-connectDb(process.env.MONGO_URI)
-  .then(async () => {
-    console.log(`MongoDB connected successfully`);
-    await seedIfEmpty();
-  })
-  .catch((err) => console.error("MongoDB connection error:", err));
+app.use(async (req, res, next) => {
+  try {
+    await connectDb();
+    // await seedIfEmpty(); 
+    next();
+  } catch (err) {
+    res.status(500).json({ error: "database_connection_failed", details: err.message });
+  }
+});
+
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 app.use('/products', express.static(path.join(__dirname, 'public/products')));
-
 
 app.use(cors({ 
   origin: true, 
@@ -45,6 +48,7 @@ app.use(rateLimit({ windowMs: 60_000, limit: 240 }));
 
 const apiRouter = express.Router();
 apiRouter.use("/webhooks/stripe", stripeWebhookRouter);
+
 apiRouter.use(express.json({ limit: "1mb" }));
 
 // Routes
@@ -61,6 +65,7 @@ app.use((err, _req, res, _next) => {
   console.error(err);
   res.status(500).json({ error: "internal_error", details: err.message });
 });
+
 export default app;
 
 if (process.env.NODE_ENV !== "production") {
