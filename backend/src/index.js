@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import { authRouter } from "./routes/auth.js";
-import { productRouter } from "./routes/products.js";
+import { productsRouter } from "./routes/products.js";
 import { ordersRouter } from "./routes/orders.js";
 
 dotenv.config();
@@ -22,7 +22,7 @@ mongoose.connect(mongoURI)
   .catch(err => console.error("❌ MongoDB Error:", err));
 
 app.use("/api/auth", authRouter);
-app.use("/api/products", productRouter);
+app.use("/api/products", productsRouter);
 app.use("/api/orders", ordersRouter);
 
 const PORT = process.env.PORT || 5000;
