@@ -5,7 +5,6 @@ import { ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation"; 
 import { toast } from "@/components/ui/sonner";
-// تأكد من وجود الأقواس { getImageUrl } هنا
 import { getImageUrl } from "@/lib/api"; 
 
 const ProductCard = ({ product }) => {
@@ -23,7 +22,7 @@ const ProductCard = ({ product }) => {
       <Link href={`/product/${productId}`} className="block">
         <div className="aspect-square overflow-hidden rounded-lg bg-secondary mb-3">
           <img
-            src={getImageUrl(product.image)} // الآن ستعمل 100%
+            src={getImageUrl(product.image)} 
             alt={product.name}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }}
